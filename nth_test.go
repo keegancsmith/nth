@@ -32,6 +32,6 @@ func BenchmarkElement(b *testing.B) {
 	dataS := sort.IntSlice(data)
 	for n := 0; n < b.N; n++ {
 		copy(data, shuffled)
-		Element(dataS, 17)
+		Element(dataS, 15)
 	}
 }
