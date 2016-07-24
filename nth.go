@@ -9,22 +9,67 @@ func Element(data sort.Interface, n int) {
 	if n < 0 || n >= l {
 		return
 	}
-	quickSelect(data, n, 0, l)
+	quickSelectAdaptive(data, n, 0, l)
 }
 
-func quickSelect(data sort.Interface, n, a, b int) {
-	pivot := a
-	for i := a + 1; i < b; i++ {
-		if data.Less(i, pivot) { // data[i] < data[pivot]
-			// data[i] needs to be before data[pivot]
-			data.Swap(pivot, i)
-			pivot++
-			data.Swap(pivot, i)
+// quickSelectAdaptive is from "Fast Deterministic Selection" by Andrei
+// Alexandrescu https://arxiv.org/abs/1606.00484
+//
+// It is deterministic O(n) selection algorithm tuned for real world
+// workloads.
+func quickSelectAdaptive(data sort.Interface, k, a, b int) {
+	var (
+		l int // |A| from the paper
+		p int // pivot position
+	)
+	for {
+		l = b - a
+		r := float64(k) / float64(l) // r <- real(k) / real(|A|)
+		if l < 12 {
+			p = hoarePartition(data, a+l/2, a, b) // HoarePartition(A, |A| / 2)
+		} else if r < 7.0/16.0 {
+			if r < 1.0/12.0 {
+				p = repeatedStepFarLeft(data, k, a, b)
+			} else {
+				p = repeatedStepLeft(data, k, a, b)
+			}
+		} else if r >= 1.0-7.0/16.0 {
+			if r >= 1.0-1.0/12.0 {
+				p = repeatedStepFarRight(data, k, a, b)
+			} else {
+				p = repeatedStepRight(data, k, a, b)
+			}
+		} else {
+			p = repeatedStepImproved(data, k, a, b)
+		}
+		if p == k {
+			return
+		}
+		if p > k {
+			b = p // A <- A[0:p]
+		} else {
+			// i <- k - p - 1  // TODO what is i?
+			a = p + 1 // A <- A[p+1:|A|]
 		}
 	}
-	if a+n < pivot {
-		quickSelect(data, n, a, pivot)
-	} else if pivot < a+n {
-		quickSelect(data, a+n-pivot-1, pivot+1, b)
-	}
 }
+
+func simplePartition(data sort.Interface, k, a, b int) int {
+	p := a
+	for i := a + 1; i < b; i++ {
+		if data.Less(i, p) {
+			data.Swap(p, i)
+			p++
+			data.Swap(p, i)
+		}
+	}
+	return p
+}
+
+// TODO implement
+var hoarePartition = simplePartition
+var repeatedStepFarLeft = simplePartition
+var repeatedStepLeft = simplePartition
+var repeatedStepFarRight = simplePartition
+var repeatedStepRight = simplePartition
+var repeatedStepImproved = simplePartition
