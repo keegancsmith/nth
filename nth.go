@@ -54,6 +54,35 @@ func quickSelectAdaptive(data sort.Interface, k, a, b int) {
 	}
 }
 
+func hoarePartition(data sort.Interface, p, begin, end int) int {
+	data.Swap(p, begin) // Swap(A[p], A[0])
+	a := begin + 1      // a = 1
+	b := end - 1        // b = |A| - 1
+Loop:
+	for {
+		for {
+			if a > b {
+				break Loop
+			}
+			if !data.Less(a, begin) { // A[a] >= A[0]
+				break
+			}
+			a++
+		}
+		for data.Less(begin, b) { // A[0] < A[b]
+			b--
+		}
+		if a >= b {
+			break
+		}
+		data.Swap(a, b) // Swap(A[a], A[b])
+		a++
+		b--
+	}
+	data.Swap(begin, a-1) // Swap(A[0], A[a-1])
+	return a - 1
+}
+
 func simplePartition(data sort.Interface, k, a, b int) int {
 	p := a
 	for i := a + 1; i < b; i++ {
@@ -67,7 +96,6 @@ func simplePartition(data sort.Interface, k, a, b int) int {
 }
 
 // TODO implement
-var hoarePartition = simplePartition
 var repeatedStepFarLeft = simplePartition
 var repeatedStepLeft = simplePartition
 var repeatedStepFarRight = simplePartition
