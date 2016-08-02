@@ -101,6 +101,29 @@ func repeatedStepLeft(data sort.Interface, k, a, b int) int {
 	return expandPartition(data, newA, newA+(k-a)*f2/l, newA+f2-1, a, b) // ExpandPartition(A, f, f + kf' / |A|, f + f' - 1)
 }
 
+func repeatedStepFarLeft(data sort.Interface, k, a, b int) int {
+	l := b - a  // |A|
+	if l < 12 { // |A| < 12
+		return hoarePartition(data, a+l/2, a, b) // HoarePartition(A, |A| / 2)
+	}
+	f := l / 4                       // f <- |A| / 4
+	for i := a + f; i < a+2*f; i++ { // for i <- f through 2f - 1 do
+		lowerMedian4(data, i-f, i, i+f, i+2*f) // LowerMedian4(A, i - f, i, i+f, i+2f)
+	}
+	f2 := f / 3                       // f' <- f / 3
+	for i := a + f; i < a+f+f2; i++ { // for i <- f through f + f' - 1 do
+		if data.Less(i+f2, i) { // A[i + f'] < A[i]
+			data.Swap(i+f2, i) // Swap(A[i + f'], A[i])
+		}
+		if data.Less(i+2*f2, i) { // A[i + 2f'] < A[i]
+			data.Swap(i+2*f2, i) // Swap(A[i + 2f'], A[i])
+		}
+	}
+	newA := a + f
+	quickSelect(repeatedStepFarLeft, data, newA+(k-a)*f2/l, newA, newA+f2) // QuickSelect(RepeatedStepFarLeft, A[f:f+f'], kf'/|A|)
+	return expandPartition(data, newA, newA+(k-a)*f2/l, newA+f2-1, a, b)   // ExpandPartition(A, f, f + kf' / |A|, f + f' - 1)
+}
+
 // lowerMedian4 takes places min at data[a] and lower median at data[b] of
 // the four values data[a,b,c,d]
 func lowerMedian4(data sort.Interface, a, b, c, d int) {
@@ -190,7 +213,6 @@ func simplePartition(data sort.Interface, k, a, b int) int {
 }
 
 // TODO implement
-var repeatedStepFarLeft = simplePartition
 var repeatedStepFarRight = simplePartition
 var repeatedStepRight = simplePartition
 var repeatedStepImproved = simplePartition
