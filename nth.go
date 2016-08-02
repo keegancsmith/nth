@@ -83,6 +83,100 @@ Loop:
 	return a - 1
 }
 
+func repeatedStepLeft(data sort.Interface, k, a, b int) int {
+	l := b - a  // |A|
+	if l < 12 { // |A| < 12
+		return hoarePartition(data, a+l/2, a, b) // HoarePartition(A, |A| / 2)
+	}
+	f := l / 4                 // f <- |A| / 4
+	for i := a; i < a+f; i++ { // for i <- 0 through f - 1 do
+		lowerMedian4(data, i, i+f, i+2*f, i+3*f) // LowerMedian4(A, i, i+f, i+2f, i+3f)
+	}
+	f2 := f / 3                       // f' <- f / 3
+	for i := a + f; i < a+f+f2; i++ { // for i <- f through f + f' - 1 do
+		median3(data, i, i+f2, i+2*f2) // Median3(A, i, i + f', i + 2f')
+	}
+	newA := a + f
+	quickSelect(repeatedStepLeft, data, newA+(k-a)*f2/l, newA, newA+f2)  // QuickSelect(RepeatedStepLeft, A[f:f+f'], kf'/|A|)
+	return expandPartition(data, newA, newA+(k-a)*f2/l, newA+f2-1, a, b) // ExpandPartition(A, f, f + kf' / |A|, f + f' - 1)
+}
+
+// lowerMedian4 takes places min at data[a] and lower median at data[b] of
+// the four values data[a,b,c,d]
+func lowerMedian4(data sort.Interface, a, b, c, d int) {
+	// TODO is there a way to do less swaps?
+	median3(data, a, b, c)
+	if data.Less(d, b) {
+		data.Swap(d, b)
+		if data.Less(b, a) {
+			data.Swap(b, a)
+		}
+	}
+}
+
+// median3 sorts the 3 values data[a,b,c] into the indexes a, b, c
+func median3(data sort.Interface, a, b, c int) {
+	if data.Less(b, a) {
+		data.Swap(b, a)
+	}
+	if data.Less(c, b) {
+		data.Swap(c, b)
+		if data.Less(b, a) {
+			data.Swap(b, a)
+		}
+	}
+}
+
+// quickSelect is the classic quickSelect with the partition function
+func quickSelect(partition func(data sort.Interface, k, a, b int) int, data sort.Interface, k, a, b int) {
+	for {
+		p := partition(data, k, a, b) // partition(A, k)
+		if p == k {
+			return
+		}
+		if p > k {
+			b = p
+		} else {
+			// k <- k - p - 1
+			a = p + 1 // A <- A[p+1:|A|]
+		}
+	}
+}
+
+// expandPartition(A, a, p, b) is poorly explained in the paper. Essentially
+// we want to ensure A[:a] < A[p] and A[p] < A[b:]. Luckily we can do minimal
+// swaps by swaping between the two slices A[:a] and A[b:]. The tricky part is
+// when we have to move the pivot such that we always have something to swap
+// between A[:a] and A[b:].
+func expandPartition(data sort.Interface, a, p, b, begin, end int) int {
+	// Invariant: data[a:b+1] is partition around data[p]
+	// Afterwards: data[begin:end] is partitioned around returned p
+	i := begin
+	j := end - 1
+	for {
+		for ; i < a && data.Less(i, p); i++ {
+		}
+		for ; j > b && !data.Less(j, p); j-- {
+		}
+		if i == a || j == b {
+			break
+		}
+		data.Swap(i, j)
+		i++
+		j--
+	}
+	// Invariant: data[begin:i], data[a:b+1], data[j+1:end] is partitioned around p
+	if i != a {
+		// We still need to partition data[i:a] around p
+		return hoarePartition(data, p, i, a)
+	}
+	if j != b {
+		// We still need to partition data[b:j+1] around p
+		return hoarePartition(data, p, b, j+1)
+	}
+	return p
+}
+
 func simplePartition(data sort.Interface, k, a, b int) int {
 	p := a
 	for i := a + 1; i < b; i++ {
@@ -97,7 +191,6 @@ func simplePartition(data sort.Interface, k, a, b int) int {
 
 // TODO implement
 var repeatedStepFarLeft = simplePartition
-var repeatedStepLeft = simplePartition
 var repeatedStepFarRight = simplePartition
 var repeatedStepRight = simplePartition
 var repeatedStepImproved = simplePartition
