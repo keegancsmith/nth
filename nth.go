@@ -124,8 +124,8 @@ func repeatedStepFarLeft(data sort.Interface, k, a, b int) int {
 	return expandPartition(data, newA, newA+(k-a)*f2/l, newA+f2-1, a, b)   // ExpandPartition(A, f, f + kf' / |A|, f + f' - 1)
 }
 
-// lowerMedian4 takes places min at data[a] and lower median at data[b] of
-// the four values data[a,b,c,d]
+// lowerMedian4 places min at data[a] and lower median at data[b] of the four
+// values data[a,b,c,d]
 func lowerMedian4(data sort.Interface, a, b, c, d int) {
 	// TODO is there a way to do less swaps?
 	median3(data, a, b, c)
