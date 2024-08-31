@@ -1,3 +1,5 @@
+> NOTE: Not ready for use, does not past correctness tests yet.
+
 # nth
 
 Fast and memory efficient implementation of a Selection Algorithm in Go.
