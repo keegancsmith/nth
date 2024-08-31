@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"testing/quick"
 )
 
 var shuffled = []int{10, 14, 6, 7, 16, 12, 9, 0, 8, 4, 11, 5, 15, 1, 2, 13, 3}
@@ -25,6 +26,34 @@ func TestElement(t *testing.T) {
 				t.Errorf("%s: Element(..., %d) != %d: %v", name, n, n, data)
 			}
 		}
+	}
+}
+
+func TestElementQuick(t *testing.T) {
+	f := func(data []int, n uint) bool {
+		if len(data) == 0 {
+			return true
+		}
+		n = n % uint(len(data)) // Ensure n is within the bounds of the slice
+
+		got := append([]int{}, data...)
+		Element(sort.IntSlice(got), int(n))
+
+		sorted := append([]int{}, data...)
+		sort.Ints(sorted)
+
+		if got[n] == sorted[n] {
+			return true
+		}
+
+		t.Logf("Element(%v, %d) returned an incorrect answer", data, n)
+		t.Logf("got:    %v", got)
+		t.Logf("sorted: %v", sorted)
+		t.Logf("(got[%d] = %d) != (sorted[%d] = %d)", n, got[n], n, sorted[n])
+		return false
+	}
+	if err := quick.Check(f, nil); err != nil {
+		t.Error(err)
 	}
 }
 
