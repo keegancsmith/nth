@@ -7,59 +7,84 @@ import (
 	"testing/quick"
 )
 
-var shuffled = []int{10, 14, 6, 7, 16, 12, 9, 0, 8, 4, 11, 5, 15, 1, 2, 13, 3}
-var asc = []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
-var desc = []int{16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}
+var cases = []struct {
+	name string
+	data []byte
+}{{
+	name: "shuffled",
+	data: []byte{10, 14, 6, 7, 16, 12, 9, 0, 8, 4, 11, 5, 15, 1, 2, 13, 3},
+}, {
+	name: "asc",
+	data: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
+}, {
+	name: "desc",
+	data: []byte{16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
+}, {
+	name: "fuzz20240831",
+	data: []byte{48, 48, 48, 48, 48, 48, 48, 32, 48, 32, 32, 48, 48, 48, 48, 32, 48, 48, 33, 48, 48, 48, 48, 48, 48, 32, 32, 32, 32},
+}}
 
 func TestElement(t *testing.T) {
-	cases := map[string][]int{
-		"shuffled": shuffled,
-		"asc":      asc,
-		"desc":     desc,
-	}
-	for name, src := range cases {
-		data := make([]int, len(src))
+	for _, tc := range cases {
+		src := append([]byte{}, tc.data...)
+		data := make([]byte, len(src))
 		for n := range src {
 			copy(data, src)
-			Element(sort.IntSlice(data), n)
-			if data[n] != n {
-				t.Errorf("%s: Element(..., %d) != %d: %v", name, n, n, data)
+			Element(byteSlice(data), n)
+			if data[n] != byte(n) {
+				t.Errorf("%s: Element(..., %d) != %d: %v", tc.name, n, n, data)
 			}
 		}
 	}
 }
 
 func TestElementQuick(t *testing.T) {
-	f := func(data []int, n uint) bool {
-		if len(data) == 0 {
-			return true
-		}
-		n = n % uint(len(data)) // Ensure n is within the bounds of the slice
-
-		got := append([]int{}, data...)
-		Element(sort.IntSlice(got), int(n))
-
-		sorted := append([]int{}, data...)
-		sort.Ints(sorted)
-
-		if got[n] == sorted[n] {
-			return true
-		}
-
-		t.Logf("Element(%v, %d) returned an incorrect answer", data, n)
-		t.Logf("got:    %v", got)
-		t.Logf("sorted: %v", sorted)
-		t.Logf("(got[%d] = %d) != (sorted[%d] = %d)", n, got[n], n, sorted[n])
-		return false
+	f := func(data []byte, n uint) bool {
+		return checkElement(t, data, n)
 	}
 	if err := quick.Check(f, nil); err != nil {
 		t.Error(err)
 	}
 }
 
+func FuzzElement(f *testing.F) {
+	for _, tc := range cases {
+		f.Add(tc.data, uint(9))
+	}
+	f.Fuzz(func(t *testing.T, data []byte, n uint) {
+		if !checkElement(t, data, n) {
+			t.Error()
+		}
+	})
+}
+
+func checkElement(t interface{ Logf(string, ...any) }, data []byte, n uint) bool {
+	if len(data) == 0 {
+		return true
+	}
+	n = n % uint(len(data)) // Ensure n is within the bounds of the slice
+
+	got := append([]byte{}, data...)
+	Element(byteSlice(got), int(n))
+
+	sorted := append([]byte{}, data...)
+	sort.Sort(byteSlice(sorted))
+
+	if got[n] == sorted[n] {
+		return true
+	}
+
+	t.Logf("Element(%v, %d) returned an incorrect answer", data, n)
+	t.Logf("got:    %v", got)
+	t.Logf("sorted: %v", sorted)
+	t.Logf("(got[%d] = %d) != (sorted[%d] = %d)", n, got[n], n, sorted[n])
+	return false
+}
+
 func BenchmarkElement(b *testing.B) {
-	data := make([]int, len(shuffled))
-	dataS := sort.IntSlice(data)
+	shuffled := append([]byte{}, cases[0].data...)
+	data := make([]byte, len(shuffled))
+	dataS := byteSlice(data)
 	for n := 0; n < b.N; n++ {
 		copy(data, shuffled)
 		Element(dataS, 15)
@@ -71,19 +96,15 @@ func TestHoarePartition(t *testing.T) {
 }
 
 func testPartition(t *testing.T, name string, f func(sort.Interface, int, int, int) int) {
-	cases := map[string][]int{
-		"shuffled": shuffled,
-		"asc":      asc,
-		"desc":     desc,
-	}
-	for dname, src := range cases {
-		data := make([]int, len(src))
+	for _, tc := range cases {
+		src := append([]byte{}, tc.data...)
+		data := make([]byte, len(src))
 		for a := 0; a < len(src); a++ {
 			for b := a + 1; b <= len(src); b++ {
 				for k := a; k < b; k++ {
 					copy(data, src)
-					p := f(sort.IntSlice(data), k, a, b)
-					cname := fmt.Sprintf("%s: %s(..., %d, %d, %d) = %d", dname, name, k, a, b, p)
+					p := f(byteSlice(data), k, a, b)
+					cname := fmt.Sprintf("%s: %s(..., %d, %d, %d) = %d", tc.name, name, k, a, b, p)
 					if p < a || p >= b {
 						t.Errorf("%s not in range [a,b)", cname)
 					}
@@ -102,3 +123,9 @@ func testPartition(t *testing.T, name string, f func(sort.Interface, int, int, i
 		}
 	}
 }
+
+type byteSlice []byte
+
+func (x byteSlice) Len() int           { return len(x) }
+func (x byteSlice) Less(i, j int) bool { return x[i] < x[j] }
+func (x byteSlice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
