@@ -201,14 +201,15 @@ func expandPartition(data sort.Interface, a, p, b, begin, end int) int {
 }
 
 func simplePartition(data sort.Interface, k, a, b int) int {
+	data.Swap(k, a)
 	p := a
 	for i := a + 1; i < b; i++ {
-		if data.Less(i, p) {
-			data.Swap(p, i)
+		if data.Less(i, a) {
 			p++
 			data.Swap(p, i)
 		}
 	}
+	data.Swap(a, p)
 	return p
 }
 
