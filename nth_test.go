@@ -91,37 +91,47 @@ func BenchmarkElement(b *testing.B) {
 	}
 }
 
-func TestHoarePartition(t *testing.T) {
+func TestPartition(t *testing.T) {
 	testPartition(t, "hoarePartition", hoarePartition)
+	testPartition(t, "simplePartition", simplePartition)
 }
 
 func testPartition(t *testing.T, name string, f func(sort.Interface, int, int, int) int) {
-	for _, tc := range cases {
-		src := append([]byte{}, tc.data...)
-		data := make([]byte, len(src))
-		for a := 0; a < len(src); a++ {
-			for b := a + 1; b <= len(src); b++ {
-				for k := a; k < b; k++ {
-					copy(data, src)
-					p := f(byteSlice(data), k, a, b)
-					cname := fmt.Sprintf("%s: %s(..., %d, %d, %d) = %d", tc.name, name, k, a, b, p)
-					if p < a || p >= b {
-						t.Errorf("%s not in range [a,b)", cname)
-					}
-					for i := a; i < p; i++ {
-						if data[i] > data[p] {
-							t.Errorf("%s not partitioned. A[%d] > A[%d] = A[p]", cname, i, p)
-						}
-					}
-					for i := p + 1; i < b; i++ {
-						if data[i] < data[p] {
-							t.Errorf("%s not partitioned. A[%d] < A[%d] = A[p]", cname, i, p)
+	t.Run(name, func(t *testing.T) {
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				src := append([]byte{}, tc.data...)
+				data := make([]byte, len(src))
+				for a := 0; a < len(src); a++ {
+					for b := a + 1; b <= len(src); b++ {
+						for k := a; k < b; k++ {
+							copy(data, src)
+							want := data[k]
+							p := f(byteSlice(data), k, a, b)
+							got := data[p]
+							cname := fmt.Sprintf("(..., %d, %d, %d) = %d", k, a, b, p)
+							if p < a || p >= b {
+								t.Errorf("%s not in range [a,b)", cname)
+							}
+							for i := a; i < p; i++ {
+								if data[i] > data[p] {
+									t.Errorf("%s not partitioned. A[%d] > A[%d] = A[p]", cname, i, p)
+								}
+							}
+							for i := p + 1; i < b; i++ {
+								if data[i] < data[p] {
+									t.Errorf("%s not partitioned. A[%d] < A[%d] = A[p]", cname, i, p)
+								}
+							}
+							if want != got {
+								t.Errorf("%s did not partion around k. got %v != %v", cname, got, want)
+							}
 						}
 					}
 				}
-			}
+			})
 		}
-	}
+	})
 }
 
 type byteSlice []byte
