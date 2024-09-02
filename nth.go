@@ -24,7 +24,7 @@ func quickSelectAdaptive(data sort.Interface, k, a, b int) {
 	)
 	for {
 		l = b - a
-		r := float64(k) / float64(l) // r <- real(k) / real(|A|)
+		r := float64(k-a) / float64(l) // r <- real(k-a) / real(|A|)
 		if l < 12 {
 			p = hoarePartition(data, a+l/2, a, b) // HoarePartition(A, |A| / 2)
 		} else if r < 7.0/16.0 {
