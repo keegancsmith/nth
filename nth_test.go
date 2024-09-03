@@ -94,6 +94,8 @@ func BenchmarkElement(b *testing.B) {
 func TestPartition(t *testing.T) {
 	testPartition(t, "hoarePartition", hoarePartition)
 	testPartition(t, "simplePartition", simplePartition)
+	testPartition(t, "repeatedStepFarLeft", repeatedStepFarLeft)
+	testPartition(t, "repeatedStepLeft", repeatedStepLeft)
 }
 
 func testPartition(t *testing.T, name string, f func(sort.Interface, int, int, int) int) {
