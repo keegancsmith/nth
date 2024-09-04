@@ -12,6 +12,36 @@ func Element(data sort.Interface, n int) {
 	quickSelectAdaptive(data, n, 0, l)
 }
 
+type slice struct {
+	data sort.Interface
+	a, b int
+}
+
+func newSlice(data sort.Interface) slice {
+	return slice{data: data, b: data.Len()}
+}
+
+func (s slice) Len() int {
+	return s.b - s.a
+}
+
+func (s slice) Less(i, j int) bool {
+	return s.data.Less(i+s.a, j+s.a)
+}
+
+func (s slice) Swap(i, j int) {
+	s.data.Swap(i+s.a, j+s.a)
+}
+
+func (s slice) Sub(a, b int) slice {
+	a += s.a
+	b += s.a
+	if a > s.b || b > s.b {
+		panic("out of range")
+	}
+	return slice{data: s.data, a: a, b: b}
+}
+
 // quickSelectAdaptive is from "Fast Deterministic Selection" by Andrei
 // Alexandrescu https://arxiv.org/abs/1606.00484
 //
@@ -55,21 +85,25 @@ func quickSelectAdaptive(data sort.Interface, k, a, b int) {
 }
 
 func hoarePartition(data sort.Interface, p, begin, end int) int {
-	data.Swap(p, begin) // Swap(A[p], A[0])
-	a := begin + 1      // a = 1
-	b := end - 1        // b = |A| - 1
+	return hoarePartitionSlice(newSlice(data).Sub(begin, end), p-begin) + begin
+}
+
+func hoarePartitionSlice(data slice, p int) int {
+	data.Swap(p, 0)     // Swap(A[p], A[0])
+	a := 1              // a = 1
+	b := data.Len() - 1 // b = |A| - 1
 Loop:
 	for {
 		for {
 			if a > b {
 				break Loop
 			}
-			if !data.Less(a, begin) { // A[a] >= A[0]
+			if !data.Less(a, 0) { // A[a] >= A[0]
 				break
 			}
 			a++
 		}
-		for data.Less(begin, b) { // A[0] < A[b]
+		for data.Less(0, b) { // A[0] < A[b]
 			b--
 		}
 		if a >= b {
@@ -79,7 +113,7 @@ Loop:
 		a++
 		b--
 	}
-	data.Swap(begin, a-1) // Swap(A[0], A[a-1])
+	data.Swap(0, a-1) // Swap(A[0], A[a-1])
 	return a - 1
 }
 
@@ -172,10 +206,14 @@ func quickSelect(partition func(data sort.Interface, k, a, b int) int, data sort
 // when we have to move the pivot such that we always have something to swap
 // between A[:a] and A[b:].
 func expandPartition(data sort.Interface, a, p, b, begin, end int) int {
+	return expandPartitionSlice(newSlice(data).Sub(begin, end), a-begin, p-begin, b-begin) + begin
+}
+
+func expandPartitionSlice(data slice, a, p, b int) int {
 	// Invariant: data[a:b+1] is partition around data[p]
-	// Afterwards: data[begin:end] is partitioned around returned p
-	i := begin
-	j := end - 1
+	// Afterwards: data is partitioned around returned p
+	i := 0
+	j := data.Len() - 1
 	for {
 		for ; i < a && data.Less(i, p); i++ {
 		}
@@ -188,15 +226,33 @@ func expandPartition(data sort.Interface, a, p, b, begin, end int) int {
 		i++
 		j--
 	}
-	// Invariant: data[begin:i], data[a:b+1], data[j+1:end] is partitioned around p
-	if i != a {
-		// We still need to partition data[i:a] around p
-		return hoarePartition(data, p, i, a)
+
+	// data[i:a] may still contain stuff >= data[p]
+	newP := p
+	for ; i < a; i++ {
+		if !data.Less(i, p) {
+			newP--
+			data.Swap(i, newP)
+		}
 	}
-	if j != b {
-		// We still need to partition data[b:j+1] around p
-		return hoarePartition(data, p, b, j+1)
+	if newP != p {
+		data.Swap(newP, p)
+		p = newP
 	}
+
+	// data[b+1:j+1] may still contain stuff <= data[p]
+	newP = p
+	for ; j > b; j-- {
+		if data.Less(j, p) {
+			newP++
+			data.Swap(j, newP)
+		}
+	}
+	if newP != p {
+		data.Swap(newP, p)
+		p = newP
+	}
+
 	return p
 }
 
